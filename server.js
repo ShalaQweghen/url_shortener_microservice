@@ -49,6 +49,8 @@ app.route('/')
 app.get("/:id", function(req, res) {
   var id = Number(req.params.id);
   Url.findOne({_id: id}, {_id: false}, function(err, urlDoc) {
+    if (err) throw new Error("Database Malfunction");
+      
     if (urlDoc) {
       res.redirect(urlDoc.org_url);
     } else {
@@ -65,8 +67,13 @@ app.get("/new/*", function(req, res) {
 
   if (validUrl.test(url)) {
     Seq.findOneAndUpdate({_id: "urls"}, {$inc: {seq: 1}}, {upsert: true}, function(err, doc) {
+      if (err) throw new Error("Database Malfunction");
+      
       id = doc.seq;
+      
       Url.create({_id: id, org_url: url}, function(err, urlDoc) {
+        if (err) throw new Error("Database Malfunction");
+        
         obj.original_url = url;
         obj.short_url = "https://literate-structure.glitch.me/" + id;
         
