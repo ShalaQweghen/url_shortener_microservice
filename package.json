@@ -2,7 +2,8 @@
   "name": "url-shortener-microservice",
   "dependencies": {
     "express": "^4.14.0",
-    "mongodb": "^2.2.30"
+    "mongodb": "^2.2.30",
+    "mongoose": "^4.11.4"
   },
   "main": "server.js",
   "scripts": {
