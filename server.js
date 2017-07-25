@@ -15,7 +15,6 @@ var Seq = require("./models/sequence");
 var app = express();
 
 mongoose.connect(process.env.DB_URL);
-mongoose.Promise = global.Promise;
 
 if (!process.env.DISABLE_XORIGIN) {
   app.use(function(req, res, next) {
@@ -63,21 +62,15 @@ app.get("/new/*", function(req, res) {
   // regex from https://stackoverflow.com/a/30229098/7172972
   var validUrl = /(http|https):\/\/(\w+:{0,1}\w*)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%!\-\/]))?/;
   var url = req.params["0"];
-  var id, obj = {};
 
   if (validUrl.test(url)) {
-    Seq.findOneAndUpdate({_id: "urls"}, {$inc: {seq: 1}}, {upsert: true}, function(err, doc) {
+    Seq.findOneAndUpdate({_id: "urls"}, {$inc: {seq: 1}}, {upsert: true}, function(err, seqDoc) {
       if (err) throw new Error("Database Malfunction");
       
-      id = doc.seq;
-      
-      Url.create({_id: id, org_url: url}, function(err, urlDoc) {
+      Url.create({_id: seqDoc.seq, org_url: url}, function(err, urlDoc) {
         if (err) throw new Error("Database Malfunction");
         
-        obj.original_url = url;
-        obj.short_url = "https://literate-structure.glitch.me/" + id;
-        
-        res.json(obj);
+        res.json({original_url: url, short_url: "https://literate-structure.glitch.me/" + urlDoc._id});
       });
     });
   } else {
