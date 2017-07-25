@@ -7,8 +7,15 @@
 
 var fs = require('fs');
 var express = require('express');
-var mongo = require('mongodb').MongoClient;
+var mongoose = require('mongoose');
+
+var Url = require("./models/url");
+var Seq = require("./models/sequence");
+
 var app = express();
+
+mongoose.connect(process.env.DB_URL);
+mongoose.Promise = global.Promise;
 
 if (!process.env.DISABLE_XORIGIN) {
   app.use(function(req, res, next) {
@@ -41,20 +48,12 @@ app.route('/')
 
 app.get("/:id", function(req, res) {
   var id = Number(req.params.id);
-  mongo.connect("mongodb://" + process.env.MONGO_USER + ":" + process.env.MONGO_PASS + "@ds141232.mlab.com:41232/urls", function(err, db) {
-    db.collection("url").find({_id: id}, {_id: 0, org_url: 1}).toArray(function(err, data) {
-      if (err) {
-        return console.log(err);
-      }
-
-      db.close();
-      
-      if (data[0]) {
-        res.redirect(data[0].org_url);
-      } else {
-        res.json({"error": "Target not found!"});
-      }
-    });
+  Url.findOne({_id: id}, {_id: false}, function(err, urlDoc) {
+    if (urlDoc) {
+      res.redirect(urlDoc.org_url);
+    } else {
+      res.json({error: "Target not in database!"});
+    }
   });
 });
 
@@ -65,30 +64,13 @@ app.get("/new/*", function(req, res) {
   var id, obj = {};
 
   if (validUrl.test(url)) {
-    mongo.connect("mongodb://" + process.env.MONGO_USER + ":" + process.env.MONGO_PASS + "@ds141232.mlab.com:41232/urls", function(err, db) {
-      if (err) {
-        return console.log(err);
-      }
-      
-      db.collection("seq").findAndModify({_id: "users"}, {}, {$inc: {seq: 1}}, function(err, s) {
-        if (err) {
-          return console.log(err);
-        }
+    Seq.findOneAndUpdate({_id: "urls"}, {$inc: {seq: 1}}, {upsert: true}, function(err, doc) {
+      id = doc.seq;
+      Url.create({_id: id, org_url: url}, function(err, urlDoc) {
+        obj.original_url = url;
+        obj.short_url = "https://literate-structure.glitch.me/" + id;
         
-        id = s.value.seq;
-        
-        db.collection("url").insertOne({_id: id, org_url: url}, function(err, data) {
-          if (err) {
-            return console.log(err);
-          }
-          
-          db.close();
-
-          obj.original_url = url;
-          obj.short_url = "https://literate-structure.glitch.me/" + id;
-        
-          res.json(obj);
-        });
+        res.json(obj);
       });
     });
   } else {
